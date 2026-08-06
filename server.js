@@ -21,12 +21,12 @@ app.use(express.json());
 // app.use(bodyParser.json());
 
 const transporter = nodemailer.createTransport({
-  host: process.env.HOST,
+  host: process.env.SMTP_HOST,
   port: 587,
   secure: false,
   auth: {
-    user: process.env.USER,
-    pass: process.env.PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
