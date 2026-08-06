@@ -20,13 +20,17 @@ app.use(express.json());
 
 // app.use(bodyParser.json());
 
+const smtpPass = process.env.SMTP_PASS_B64
+  ? Buffer.from(process.env.SMTP_PASS_B64, "base64").toString("utf8")
+  : process.env.SMTP_PASS;
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: 587,
   secure: false,
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    pass: smtpPass,
   },
 });
 
