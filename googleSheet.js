@@ -12,9 +12,22 @@ const auth = new google.auth.GoogleAuth({
 const spreadsheetId = "1zD8cj5BupUUUMofLoY07Me9kK59F67ZtLj5l20g9qwQ";
 // const spreadsheetId = "16fxTIPwYVZS2mrqKmEkfGPdqlawE186shhNiIpBUMXY";
 
+// Create the Sheets client once and reuse it for every lead
+let sheetsPromise;
+function getSheets() {
+  if (!sheetsPromise) {
+    sheetsPromise = auth.getClient()
+      .then((client) => google.sheets({ version: "v4", auth: client }))
+      .catch((err) => { sheetsPromise = null; throw err; });
+  }
+  return sheetsPromise;
+}
+
+// Warm up auth at startup so the first lead isn't slow
+getSheets().catch((err) => console.error("Google Sheets auth warm-up failed:", err.message));
+
 async function addLead(data) {
-  const client = await auth.getClient();
-  const sheets = google.sheets({ version: "v4", auth: client });
+  const sheets = await getSheets();
 
   const now = new Date();
 
