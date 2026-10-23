@@ -15,7 +15,7 @@ class WarmMailer {
   }
 
   start() {
-    this._ensureConnected().catch((err) => console.error("Warm SMTP connect failed:", err.message));
+    this._ensureConnected().catch(() => {});
   }
 
   _ensureConnected() {
@@ -44,8 +44,7 @@ class WarmMailer {
       };
 
       conn.on("error", (err) => {
-        if (!settled) return fail(err);
-        console.error("Warm SMTP connection error:", err.message);
+        if (!settled) fail(err);
       });
       conn.on("end", () => {
         if (this.connection === conn) {
@@ -61,7 +60,6 @@ class WarmMailer {
           this.connection = conn;
           this.connecting = null;
           this._startKeepAlive();
-          console.log("Warm SMTP connection ready");
           resolve(conn);
         });
       });
@@ -81,7 +79,6 @@ class WarmMailer {
       if (!this.connection || this.busy) return;
       this.connection.reset((err) => {
         if (err) {
-          console.error("Warm SMTP keep-alive failed, reconnecting:", err.message);
           this._drop();
         }
       });

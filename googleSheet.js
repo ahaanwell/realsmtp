@@ -24,7 +24,7 @@ function getSheets() {
 }
 
 // Warm up auth at startup so the first lead isn't slow
-getSheets().catch((err) => console.error("Google Sheets auth warm-up failed:", err.message));
+getSheets().catch(() => {});
 
 async function addLead(data) {
   const sheets = await getSheets();

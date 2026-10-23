@@ -4,7 +4,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 
 // Load .env before googleSheet.js reads GOOGLE_CREDENTIALS_B64
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const addLead = require("./googleSheet");
 const WarmMailer = require("./warmMailer");
@@ -19,23 +19,19 @@ app.use(express.json());
 const MAIL_FROM = `"New Lead" <info@searchmyspace.in>`;
 const LEAD_COPY_EMAILS = ["livexcellence9@gmail.com"];
 
-const smtpPass = process.env.SMTP_PASS_B64
-  ? Buffer.from(process.env.SMTP_PASS_B64, "base64").toString("utf8")
-  : process.env.SMTP_PASS;
+// const smtpPass = process.env.SMTP_PASS_B64
+//   ? Buffer.from(process.env.SMTP_PASS_B64, "base64").toString("utf8")
+//   : process.env.SMTP_PASS;
 
 const smtpConfig = {
   host: process.env.SMTP_HOST || "smtp.hostinger.com",
-  port: 587,
-  secure: false,
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.SMTP_USER,
-    pass: smtpPass,
-  },
+      pass: process.env.SMTP_PASS,
+    },
 };
-
-if (!smtpConfig.auth.user || !smtpConfig.auth.pass) {
-  console.error("SMTP_USER / SMTP_PASS_B64 env vars are MISSING - emails will fail");
-}
 
 // Pooled transporter for the background copy emails and as a fallback
 const transporter = nodemailer.createTransport({
@@ -51,17 +47,14 @@ const transporter = nodemailer.createTransport({
 // Always-logged-in connection for the company email the response waits on
 const warmMailer = new WarmMailer(smtpConfig);
 
-// Retry a few times and log failures; throws the last error if every attempt fails
+// Retry a few times; throws the last error if every attempt fails
 async function sendWithRetry(mailOptions, attempts = 3) {
   for (let i = 1; i <= attempts; i++) {
     try {
       await transporter.sendMail(mailOptions);
-      console.log(`Email sent to ${mailOptions.to}`);
       return;
     } catch (err) {
-      console.error(`Email to ${mailOptions.to} failed (attempt ${i}/${attempts}):`, err.message);
       if (i === attempts) {
-        console.error(`Email to ${mailOptions.to} permanently failed. Subject: ${mailOptions.subject}`);
         throw err;
       }
       await new Promise((r) => setTimeout(r, 2000 * i));
@@ -73,9 +66,7 @@ async function sendWithRetry(mailOptions, attempts = 3) {
 async function sendCompanyEmail(mailOptions) {
   try {
     await warmMailer.sendMail(mailOptions);
-    console.log(`Email sent to ${mailOptions.to}`);
-  } catch (err) {
-    console.error(`Warm send to ${mailOptions.to} failed, retrying on a fresh connection:`, err.message);
+  } catch {
     await sendWithRetry(mailOptions, 1);
   }
 }
@@ -151,10 +142,7 @@ app.post("/send-lead", async (req, res) => {
       number,
       country_code: country_code || "",
       project_name
-    }).catch((sheetError) => {
-      console.error("Google Sheet logging failed:");
-      console.error(sheetError);
-    });
+    }).catch(() => {});
 
     // The response depends only on the company email
     try {
@@ -171,8 +159,7 @@ app.post("/send-lead", async (req, res) => {
       message: "Thank you! Your enquiry has been submitted successfully."
     });
 
-  } catch (error) {
-    console.error("Unexpected error in /send-lead:", error);
+  } catch {
     res.status(500).json({
       success: false,
       message: "Something went wrong. Please try again."
@@ -183,6 +170,4 @@ app.post("/send-lead", async (req, res) => {
 // Log in at startup so the first lead doesn't pay for the SMTP login
 warmMailer.start();
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, "0.0.0.0");
